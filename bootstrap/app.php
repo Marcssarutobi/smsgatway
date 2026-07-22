@@ -13,7 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias(['device.auth' => \App\Http\Middleware\DeviceAuth::class]);
+        $middleware->alias([
+            'device.auth' => \App\Http\Middleware\DeviceAuth::class,
+            'api.key' => \App\Http\Middleware\ApiKeyAuth::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
