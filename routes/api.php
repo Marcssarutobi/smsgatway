@@ -6,6 +6,7 @@ use App\Http\Controllers\DeviceJobController;
 use App\Http\Controllers\DevicePairingController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\OrganisationController;
+use App\Http\Controllers\PlanController;
 use App\Http\Controllers\SmsMessageController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TwoFactorController;
@@ -64,6 +65,8 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('/subscription', [SubscriptionController::class, 'subscribe']);
 
 });
+
+Route::get('/plans', [PlanController::class, 'index']);
 
 // ---------- API SMS (authentification par clé API, pas Sanctum) ----------
 Route::prefix('v1')->middleware('api.key')->group(function () {
