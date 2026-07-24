@@ -60,6 +60,6 @@ class SmsMessageController extends Controller
             $query->where('status', $request->status);
         }
 
-        return response()->json($query->paginate(20));
+        return response()->json($query->get());
     }
 }

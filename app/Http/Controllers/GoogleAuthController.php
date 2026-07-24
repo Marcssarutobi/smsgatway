@@ -14,7 +14,7 @@ class GoogleAuthController extends Controller
     public function redirect()
     {
         $url = Socialite::driver('google')->stateless()->redirect()->getTargetUrl();
-
+        dd($url);
         return response()->json(['url' => $url]);
     }
 

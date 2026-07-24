@@ -19,7 +19,7 @@ class UserController extends Controller
             return response()->json(['message' => 'Accès refusé'], 403);
         }
 
-        $users = User::orderBy('id', 'desc')->paginate(20);
+        $users = User::orderBy('id', 'desc')->get();
 
         return response()->json($users);
     }

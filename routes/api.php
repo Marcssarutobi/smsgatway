@@ -19,8 +19,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth')->group(function () {
     Route::post('/register', [UserController::class, 'register']);
     Route::post('/login', [UserController::class, 'login']);
-    Route::get('/google/redirect', [GoogleAuthController::class, 'redirect']);
-    Route::get('/google/callback', [GoogleAuthController::class, 'callback']);
+    
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [UserController::class, 'logout']);
