@@ -62,4 +62,24 @@ class SmsMessageController extends Controller
 
         return response()->json($query->get());
     }
+
+    public function indexForUser(Request $request)
+    {
+        $query = $request->user()->smsMessages()->with('deviceSim.device')->latest();
+
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        return response()->json($query->get());
+    }
+
+    public function showForUser(Request $request, SmsMessage $sms)
+    {
+        if ($sms->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'Accès refusé'], 403);
+        }
+
+        return response()->json($sms->load('statusLogs'));
+    }
 }

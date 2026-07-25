@@ -16,26 +16,44 @@ class PlanSeeder extends Seeder
         $plans = [
             [
                 'name' => 'Starter',
-                'price' => 5000,
+                'price' => 29,
                 'currency' => 'XOF',
-                'sms_quota_monthly' => 500,
+                'sms_quota_monthly' => 1000,
                 'max_devices' => 1,
+                'features' => [
+                    'Support par email',
+                    'Webhooks temps réel',
+                    'Dashboard basique',
+                ],
                 'active' => true,
             ],
             [
                 'name' => 'Business',
-                'price' => 20000,
+                'price' => 79,
                 'currency' => 'XOF',
-                'sms_quota_monthly' => 3000,
+                'sms_quota_monthly' => 10000,
                 'max_devices' => 3,
+                'features' => [
+                    'Support prioritaire 24/7',
+                    'Webhooks temps réel',
+                    'Statistiques avancées',
+                    'Multi-SIM automatique',
+                ],
                 'active' => true,
             ],
             [
                 'name' => 'Pro',
-                'price' => 60000,
+                'price' => 149,
                 'currency' => 'XOF',
-                'sms_quota_monthly' => 12000,
+                'sms_quota_monthly' => 50000,
                 'max_devices' => 10,
+                'features' => [
+                    'Support dédié + SLA garanti',
+                    'Webhooks temps réel',
+                    'Statistiques avancées',
+                    'Multi-SIM automatique',
+                    'Accès API prioritaire',
+                ],
                 'active' => true,
             ],
         ];
@@ -43,7 +61,6 @@ class PlanSeeder extends Seeder
         foreach ($plans as $plan) {
             Plan::updateOrCreate(['name' => $plan['name']], $plan);
         }
-
         $this->command->info('✔ Plans créés : Starter, Business, Pro');
     }
 }

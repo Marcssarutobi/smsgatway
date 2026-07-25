@@ -67,4 +67,17 @@ class User extends Authenticatable
     {
         return $this->hasOne(Organisation::class);
     }
+
+    public function startTrialSubscription(): Subscription
+    {
+        $trialPlan = Plan::where('name', 'Trial')->firstOrFail();
+
+        return $this->subscriptions()->create([
+            'plan_id' => $trialPlan->id,
+            'status' => 'active',
+            'sms_used' => 0,
+            'current_period_start' => now(),
+            'current_period_end' => now()->addDays(14),
+        ]);
+    }
 }

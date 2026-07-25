@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth')->group(function () {
     Route::post('/register', [UserController::class, 'register']);
     Route::post('/login', [UserController::class, 'login']);
-    
+
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [UserController::class, 'logout']);
@@ -62,6 +62,9 @@ Route::middleware('auth:sanctum')->group(function(){
 
     Route::get('/subscription', [SubscriptionController::class, 'current']);
     Route::post('/subscription', [SubscriptionController::class, 'subscribe']);
+
+    Route::get('/sms-logs', [SmsMessageController::class, 'indexForUser']);
+    Route::get('/sms-logs/{sms}', [SmsMessageController::class, 'showForUser']);
 
 });
 

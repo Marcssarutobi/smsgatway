@@ -46,6 +46,7 @@ class DemoDataSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+        $client->startTrialSubscription();
 
         $this->command->info('✔ Utilisateurs : admin@smsgateway.test / client@smsgateway.test (mdp: password)');
 

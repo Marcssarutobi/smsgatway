@@ -80,6 +80,8 @@ class UserController extends Controller
             'status' => 'en_attente', // ex: en attente de vérification email
         ]);
 
+        $user->startTrialSubscription();
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

@@ -44,6 +44,7 @@ class GoogleAuthController extends Controller
                         'status' => 'actif',
                         'email_verified_at' => now(), // Google a déjà vérifié l'email
                     ]);
+                    $user->startTrialSubscription();
                 }
 
                 OauthAccount::create([
