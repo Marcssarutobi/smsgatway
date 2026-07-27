@@ -15,10 +15,18 @@ class PlanSeeder extends Seeder
     {
         $plans = [
             [
-                'name' => 'Starter',
-                'price' => 29,
+                'name' => 'Trial',
+                'price' => 0,
                 'currency' => 'XOF',
-                'sms_quota_monthly' => 1000,
+                'sms_quota_monthly' => 50,   // quota limité pour l'essai
+                'max_devices' => 1,
+                'active' => true,
+            ],
+            [
+                'name' => 'Starter',
+                'price' => 5000,
+                'currency' => 'XOF',
+                'sms_quota_monthly' => 500,
                 'max_devices' => 1,
                 'features' => [
                     'Support par email',
@@ -29,23 +37,22 @@ class PlanSeeder extends Seeder
             ],
             [
                 'name' => 'Business',
-                'price' => 79,
+                'price' => 20000,
                 'currency' => 'XOF',
-                'sms_quota_monthly' => 10000,
+                'sms_quota_monthly' => 3000,
                 'max_devices' => 3,
                 'features' => [
                     'Support prioritaire 24/7',
                     'Webhooks temps réel',
                     'Statistiques avancées',
-                    'Multi-SIM automatique',
                 ],
                 'active' => true,
             ],
             [
                 'name' => 'Pro',
-                'price' => 149,
+                'price' => 60000,
                 'currency' => 'XOF',
-                'sms_quota_monthly' => 50000,
+                'sms_quota_monthly' => 12000,
                 'max_devices' => 10,
                 'features' => [
                     'Support dédié + SLA garanti',
@@ -61,6 +68,7 @@ class PlanSeeder extends Seeder
         foreach ($plans as $plan) {
             Plan::updateOrCreate(['name' => $plan['name']], $plan);
         }
+
         $this->command->info('✔ Plans créés : Starter, Business, Pro');
     }
 }
