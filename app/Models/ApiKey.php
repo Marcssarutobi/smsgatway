@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ApiKey extends Model
 {
-    protected $fillable = ['user_id', 'name', 'key', 'secret', 'status', 'last_used_at'];
+    protected $fillable = ['user_id', 'name', 'key', 'environment', 'secret', 'status', 'last_used_at'];
 
     protected $hidden = ['secret'];
 
