@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Device;
 use App\Models\DeviceSim;
+use App\Models\User;
 use Illuminate\Support\Str;
 
 class DevicePairingController extends Controller
@@ -29,8 +30,10 @@ class DevicePairingController extends Controller
             return response()->json(['message' => 'Code de pairing invalide ou expiré'], 422);
         }
 
+        $user = User::with('activeSubscription.plan')->find($userId);
+
         $device = Device::create([
-            'user_id' => $userId,
+            'user_id' => $user->id,
             'name' => $request->device_name,
             'device_token' => Str::random(60),
             'android_device_id' => $request->android_device_id,
@@ -39,19 +42,27 @@ class DevicePairingController extends Controller
             'last_seen_at' => now(),
         ]);
 
+        $subscription = $user->activeSubscription;
+        $simsCount = count($request->sims);
+
+        $dailyQuotaPerSim = $subscription
+            ? (int) floor(($subscription->plan->sms_quota_monthly / 30) / max(1, $simsCount))
+            : 10;
+
         foreach ($request->sims as $sim) {
             DeviceSim::create([
                 'device_id' => $device->id,
                 'slot_index' => $sim['slot_index'],
                 'phone_number' => $sim['phone_number'] ?? null,
                 'operator' => $sim['operator'] ?? null,
+                'daily_quota' => $dailyQuotaPerSim,
             ]);
         }
 
         cache()->forget("pairing:{$request->pairing_token}");
 
         return response()->json([
-            'device_token' => $device->device_token, // l'app le stocke pour s'authentifier ensuite
+            'device_token' => $device->device_token,
             'device' => $device->load('sims'),
         ], 200);
     }
