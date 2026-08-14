@@ -45,13 +45,14 @@ class DevicePairingController extends Controller
         $subscription = $user->activeSubscription;
         $simsCount = count($request->sims);
 
-        // max(1, ...) est essentiel : avec un petit plan (ex: 50 SMS/mois) réparti
-        // sur plusieurs SIM, floor() peut tomber à 0 et bloquer tout envoi
-        // (sent_today (0) < daily_quota (0) est faux). Le quota mensuel réel reste
-        // de toute façon contrôlé au niveau de l'abonnement (Subscription::hasQuotaLeft),
-        // ce quota journalier par SIM sert seulement à répartir la charge dans la journée.
+        // Répartit le quota du plan entre les SIM du téléphone (ex: plan à 50 SMS/mois
+        // + 2 SIM -> 25 chacune). max(1, ...) garantit qu'une SIM n'est jamais bloquée
+        // à 0 même avec un tout petit plan. Le vrai plafond mensuel reste de toute façon
+        // contrôlé au niveau de l'abonnement (Subscription::hasQuotaLeft) : ce quota par
+        // SIM ne fait que répartir la charge entre les téléphones/numéros disponibles,
+        // il ne peut jamais, à lui seul, laisser dépasser le quota du plan.
         $dailyQuotaPerSim = $subscription
-            ? max(1, (int) floor(($subscription->plan->sms_quota_monthly / 30) / max(1, $simsCount)))
+            ? max(1, (int) ceil($subscription->plan->sms_quota_monthly / max(1, $simsCount)))
             : 10;
 
         foreach ($request->sims as $sim) {

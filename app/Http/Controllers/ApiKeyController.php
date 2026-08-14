@@ -15,31 +15,21 @@ class ApiKeyController extends Controller
         );
     }
 
+    // Un utilisateur n'a jamais qu'une seule paire de clés (test + live), générée
+    // automatiquement à l'inscription (voir User::generatePairFor). Cette action
+    // sert à la RÉGÉNÉRER (ex: fuite de clé) : les anciennes sont supprimées.
     public function store(Request $request)
     {
         $request->validate([
             'name' => 'nullable|string|max:255',
         ]);
 
-        $keys = collect(['test', 'live'])->map(function ($environment) use ($request) {
+        $request->user()->apiKeys()->delete();
 
-            return $request->user()->apiKeys()->create([
-                'name' => ($request->name ?? 'API Key') . ' (' . ucfirst($environment) . ')',
-                'environment' => $environment,
-                'key' => $environment === 'test'
-                    ? 'sk_test_' . Str::random(32)
-                    : 'sk_live_' . Str::random(32),
-
-                'secret' => $environment === 'test'
-                    ? 'ss_test_' . Str::random(48)
-                    : 'ss_live_' . Str::random(48),
-
-                'status' => 'active',
-            ]);
-        });
+        $keys = ApiKey::generatePairFor($request->user(), $request->name);
 
         return response()->json([
-            'message' => 'Clés API générées avec succès.',
+            'message' => 'Clés API régénérées avec succès. Les anciennes clés ne fonctionnent plus.',
             'keys' => $keys,
         ], 200);
     }

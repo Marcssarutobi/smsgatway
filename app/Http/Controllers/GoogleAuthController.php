@@ -46,6 +46,7 @@ class GoogleAuthController extends Controller
                         'email_verified_at' => now(), // Google a déjà vérifié l'email
                     ]);
                     $user->startTrialSubscription();
+                    \App\Models\ApiKey::generatePairFor($user);
                 }
 
                 OauthAccount::create([
@@ -153,6 +154,7 @@ class GoogleAuthController extends Controller
                 ]);
 
                 $user->startTrialSubscription();
+                \App\Models\ApiKey::generatePairFor($user);
             }
 
             OauthAccount::create([

@@ -82,6 +82,7 @@ Route::post('/webhooks/fedapay', [PaymentController::class, 'webhook']);
 // ---------- API SMS (authentification par clé API, pas Sanctum) ----------
 Route::prefix('v1')->middleware('api.key')->group(function () {
     Route::post('/sms/send', [SmsMessageController::class, 'store']);
+    Route::post('/sms/send-bulk', [SmsMessageController::class, 'storeBulk']);
     Route::get('/sms/{sms}', [SmsMessageController::class, 'show']);
     Route::get('/sms', [SmsMessageController::class, 'index']);
 });

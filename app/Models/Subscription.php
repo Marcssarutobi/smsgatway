@@ -30,4 +30,11 @@ class Subscription extends Model
     {
         return $this->sms_used < $this->plan->sms_quota_monthly;
     }
+
+    // Utilisé pour l'envoi groupé : vérifie qu'il reste assez de quota pour
+    // TOUT le lot de destinataires, pas juste pour un seul message.
+    public function hasQuotaLeftFor(int $count): bool
+    {
+        return ($this->sms_used + $count) <= $this->plan->sms_quota_monthly;
+    }
 }

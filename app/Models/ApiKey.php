@@ -21,4 +21,24 @@ class ApiKey extends Model
     {
         return $this->hasMany(SmsMessage::class);
     }
+
+    // Génère la paire unique de clés (test + live) d'un utilisateur. Centralisé
+    // ici pour être appelé partout où un compte est créé (inscription classique,
+    // Google web, Google mobile) ainsi que pour la régénération manuelle.
+    public static function generatePairFor(User $user, ?string $label = null): \Illuminate\Support\Collection
+    {
+        return collect(['test', 'live'])->map(function ($environment) use ($user, $label) {
+            return $user->apiKeys()->create([
+                'name' => ($label ?? 'Clé API') . ' (' . ucfirst($environment) . ')',
+                'environment' => $environment,
+                'key' => $environment === 'test'
+                    ? 'sk_test_' . \Illuminate\Support\Str::random(32)
+                    : 'sk_live_' . \Illuminate\Support\Str::random(32),
+                'secret' => $environment === 'test'
+                    ? 'ss_test_' . \Illuminate\Support\Str::random(48)
+                    : 'ss_live_' . \Illuminate\Support\Str::random(48),
+                'status' => 'active',
+            ]);
+        });
+    }
 }
