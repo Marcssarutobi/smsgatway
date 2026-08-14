@@ -27,6 +27,12 @@ class SubscriptionController extends Controller
             ], 422);
         }
 
+        if ($request->user()->hasAlreadyUsedPlan($plan)) {
+            return response()->json([
+                'message' => "Vous avez déjà utilisé le plan {$plan->name}. Ce plan gratuit n'est utilisable qu'une seule fois par compte.",
+            ], 422);
+        }
+
         $request->user()->subscriptions()->where('status', 'active')->update(['status' => 'cancelled']);
 
         $subscription = $request->user()->subscriptions()->create([

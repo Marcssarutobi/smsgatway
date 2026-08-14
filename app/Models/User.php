@@ -58,6 +58,14 @@ class User extends Authenticatable
         return $this->hasMany(Subscription::class);
     }
 
+    // Un plan gratuit (essai) ne doit pouvoir être activé qu'une seule fois par
+    // utilisateur, sinon il suffirait de le resélectionner pour reset son quota.
+    // On regarde tout l'historique (pas seulement l'abonnement actif).
+    public function hasAlreadyUsedPlan(Plan $plan): bool
+    {
+        return $this->subscriptions()->where('plan_id', $plan->id)->exists();
+    }
+
     public function payments()
     {
         return $this->hasMany(Payment::class);

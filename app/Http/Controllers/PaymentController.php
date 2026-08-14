@@ -33,6 +33,12 @@ class PaymentController extends Controller
 
         // Plan gratuit : pas besoin de passer par FedaPay, activation immédiate.
         if ((float) $plan->price <= 0) {
+            if ($user->hasAlreadyUsedPlan($plan)) {
+                return response()->json([
+                    'message' => "Vous avez déjà utilisé le plan {$plan->name}. Ce plan gratuit n'est utilisable qu'une seule fois par compte.",
+                ], 422);
+            }
+
             $subscription = $this->activateSubscription($user, $plan);
 
             return response()->json([

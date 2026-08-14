@@ -27,12 +27,31 @@ class DeviceJobController extends Controller
         $request->validate([
             'status' => 'required|in:sent,delivered,failed',
             'error_message' => 'nullable|string',
+            // Renseigné par l'app si elle a dû basculer sur une autre SIM du même
+            // téléphone après plusieurs échecs sur la SIM initialement assignée.
+            'device_sim_id' => 'nullable|integer|exists:device_sims,id',
         ]);
 
         $device = $request->authenticated_device;
 
         if (!$device->sims()->where('id', $sms->device_sim_id)->exists()) {
             return response()->json(['message' => 'Ce SMS n\'appartient pas à ce device'], 403);
+        }
+
+        // Si l'app a basculé sur une autre SIM du même device pour réussir l'envoi,
+        // on réassigne le SMS à cette SIM avant de créditer son quota journalier,
+        // sinon le compteur sent_today serait incrémenté sur la mauvaise SIM.
+        if ($request->device_sim_id && (int) $request->device_sim_id !== $sms->device_sim_id) {
+            if (!$device->sims()->where('id', $request->device_sim_id)->exists()) {
+                return response()->json(['message' => 'Cette SIM n\'appartient pas à ce device'], 403);
+            }
+
+            $sms->update(['device_sim_id' => $request->device_sim_id]);
+            $sms->statusLogs()->create([
+                'status' => $sms->status,
+                'details' => "Basculé sur la SIM #{$request->device_sim_id} après échec sur la SIM initiale",
+            ]);
+            $sms->refresh();
         }
 
         $sms->updateStatus($request->status, $request->error_message);

@@ -22,6 +22,23 @@ class SmsMessageController extends Controller
             return response()->json(['message' => 'Quota d\'envoi mensuel dépassé'], 402);
         }
 
+        // Vérifié ici (avant de mettre en file d'attente) plutôt que de laisser
+        // DispatchSmsJob épuiser ses tentatives en silence : ça donne un retour
+        // immédiat et clair au lieu d'un échec après plusieurs minutes de retry.
+        $hasAvailableDevice = \App\Models\DeviceSim::query()
+            ->whereHas('device', function ($query) use ($user) {
+                $query->where('user_id', $user->id)->where('status', 'online');
+            })
+            ->where('is_active', true)
+            ->whereColumn('sent_today', '<', 'daily_quota')
+            ->exists();
+
+        if (!$hasAvailableDevice) {
+            return response()->json([
+                'message' => 'Aucun téléphone disponible pour envoyer ce SMS. Vérifiez qu\'un appareil est appairé, en ligne, et que ses SIM ont du quota journalier restant.',
+            ], 503);
+        }
+
         $content = $request->message;
         if ($signature = $user->organisation?->signature) {
             $content .= "\n" . $signature;
