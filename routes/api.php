@@ -6,6 +6,7 @@ use App\Http\Controllers\DeviceJobController;
 use App\Http\Controllers\DevicePairingController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\OrganisationController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\SmsMessageController;
 use App\Http\Controllers\SubscriptionController;
@@ -62,7 +63,11 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::put('/organisation', [OrganisationController::class, 'update']);
 
     Route::get('/subscription', [SubscriptionController::class, 'current']);
-    Route::post('/subscription', [SubscriptionController::class, 'subscribe']);
+    Route::post('/subscription', [SubscriptionController::class, 'subscribe']); // plans gratuits uniquement
+
+    // Paiement d'un plan payant via FedaPay
+    Route::post('/subscription/checkout', [PaymentController::class, 'checkout']);
+    Route::get('/subscription/payments/{payment}', [PaymentController::class, 'status']);
 
     Route::get('/sms-logs', [SmsMessageController::class, 'indexForUser']);
     Route::get('/sms-logs/{sms}', [SmsMessageController::class, 'showForUser']);
@@ -70,6 +75,9 @@ Route::middleware('auth:sanctum')->group(function(){
 });
 
 Route::get('/plans', [PlanController::class, 'index']);
+
+// Webhook FedaPay : appelé par les serveurs FedaPay, authentifié par signature HMAC (pas Sanctum)
+Route::post('/webhooks/fedapay', [PaymentController::class, 'webhook']);
 
 // ---------- API SMS (authentification par clé API, pas Sanctum) ----------
 Route::prefix('v1')->middleware('api.key')->group(function () {

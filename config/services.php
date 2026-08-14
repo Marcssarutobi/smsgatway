@@ -45,4 +45,15 @@ return [
         'server_key' => env('FCM_SERVER_KEY'),
     ],
 
+    'fedapay' => [
+        // Clé publique : utilisée côté front si besoin (Feda Checkout JS), jamais pour signer des requêtes serveur
+        'public_key' => env('FEDAPAY_PUBLIC_KEY'),
+        // Clé secrète : utilisée uniquement côté serveur pour créer les transactions
+        'secret_key' => env('FEDAPAY_SECRET_KEY'),
+        // 'sandbox' pour les tests, 'live' en production
+        'environment' => env('FEDAPAY_ENVIRONMENT', 'sandbox'),
+        // Clé secrète du endpoint webhook (visible dans le dashboard FedaPay > Développeurs > Webhooks)
+        'webhook_secret' => env('FEDAPAY_WEBHOOK_SECRET'),
+    ],
+
 ];

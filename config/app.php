@@ -54,6 +54,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // URL du frontend React (admin), utilisée pour construire les liens de retour
+    // (ex: callback_url FedaPay après paiement, redirection OAuth Google web).
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

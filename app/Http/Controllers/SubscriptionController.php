@@ -12,12 +12,20 @@ class SubscriptionController extends Controller
         return response()->json($request->user()->activeSubscription()->with('plan')->first());
     }
 
-    // Simplifié : pas de paiement réel ici, juste le changement de plan
+    // Ne gère plus que les plans gratuits (ex: Trial) : activation immédiate sans paiement.
+    // Pour un plan payant, le front doit utiliser POST /subscription/checkout (paiement FedaPay),
+    // qui active l'abonnement une fois le webhook "transaction.approved" reçu.
     public function subscribe(Request $request)
     {
         $request->validate(['plan_id' => 'required|exists:plans,id']);
 
         $plan = Plan::findOrFail($request->plan_id);
+
+        if ((float) $plan->price > 0) {
+            return response()->json([
+                'message' => 'Ce plan est payant : utilisez /subscription/checkout pour démarrer le paiement.',
+            ], 422);
+        }
 
         $request->user()->subscriptions()->where('status', 'active')->update(['status' => 'cancelled']);
 
