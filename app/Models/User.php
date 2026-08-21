@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasApiTokens, Notifiable;
+    use HasApiTokens, Notifiable, MustVerifyEmailTrait;
 
     protected $fillable = ['name', 'email', 'password', 'avatar', 'role', 'status'];
 
@@ -26,6 +28,14 @@ class User extends Authenticatable
     public function oauthAccounts()
     {
         return $this->hasMany(OauthAccount::class);
+    }
+
+    // Par défaut, Laravel envoie une notification pointant vers une vue Blade
+    // (/password/reset/{token}) qui n'existe pas dans une API pure. On la
+    // redirige vers la page React du frontend à la place.
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
     }
 
     public function twoFactorRecoveryAttempts()

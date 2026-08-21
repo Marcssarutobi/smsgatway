@@ -189,13 +189,17 @@ class PaymentController extends Controller
     {
         $user->subscriptions()->where('status', 'active')->update(['status' => 'cancelled']);
 
-        return $user->subscriptions()->create([
+        $subscription = $user->subscriptions()->create([
             'plan_id' => $plan->id,
             'status' => 'active',
             'sms_used' => 0,
             'current_period_start' => now(),
             'current_period_end' => now()->addMonth(),
         ]);
+
+        $user->notify(new \App\Notifications\SubscriptionActivatedNotification($plan));
+
+        return $subscription;
     }
 
     /**

@@ -14,3 +14,7 @@ Artisan::command('inspire', function () {
 // - En local (Windows y compris) : laisser tourner `php artisan schedule:work`
 //   dans un terminal pendant vos tests.
 Schedule::command('sms:reset-daily-quota')->dailyAt('00:00');
+
+// Détecte les téléphones qui ne répondent plus (app fermée, batterie morte,
+// perte réseau) et les repasse "offline" dans le dashboard admin.
+Schedule::command('devices:mark-offline')->everyMinute();

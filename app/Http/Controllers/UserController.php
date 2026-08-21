@@ -81,6 +81,7 @@ class UserController extends Controller
         ]);
 
         $user->startTrialSubscription();
+        $user->sendEmailVerificationNotification();
         \App\Models\ApiKey::generatePairFor($user);
 
         $token = $user->createToken('auth_token')->plainTextToken;

@@ -18,7 +18,11 @@ class TwoFactorController extends Controller
         $google2fa = new Google2FA();
         $secret = $google2fa->generateSecretKey();
 
-        $request->user()->update(['two_factor_secret' => $secret]);
+        // update() ignore silencieusement les champs absents de $fillable — et
+        // two_factor_secret y est volontairement absent (on ne veut jamais qu'il
+        // soit modifiable via une requête utilisateur classique). forceFill()
+        // contourne ça pour cette écriture interne contrôlée par le serveur.
+        $request->user()->forceFill(['two_factor_secret' => $secret])->save();
 
         $qrCodeUrl = $google2fa->getQRCodeUrl(
             config('app.name'),
@@ -50,10 +54,10 @@ class TwoFactorController extends Controller
 
         $recoveryCodes = collect(range(1, 8))->map(fn () => \Illuminate\Support\Str::random(10))->toArray();
 
-        $request->user()->update([
+        $request->user()->forceFill([
             'two_factor_confirmed_at' => now(),
             'two_factor_recovery_codes' => $recoveryCodes,
-        ]);
+        ])->save();
 
         return response()->json(['recovery_codes' => $recoveryCodes]);
     }
@@ -90,5 +94,24 @@ class TwoFactorController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json(['user' => $user, 'token' => $token]);
+    }
+
+    // Désactivation de la 2FA depuis les paramètres du compte — redemande le mot
+    // de passe pour éviter qu'une session volée puisse désactiver la protection.
+    public function disable(Request $request)
+    {
+        $request->validate(['password' => 'required|string']);
+
+        if (!\Illuminate\Support\Facades\Hash::check($request->password, $request->user()->password)) {
+            return response()->json(['message' => 'Mot de passe incorrect'], 422);
+        }
+
+        $request->user()->update([
+            'two_factor_secret' => null,
+            'two_factor_confirmed_at' => null,
+            'two_factor_recovery_codes' => null,
+        ]);
+
+        return response()->json(['message' => '2FA désactivée']);
     }
 }

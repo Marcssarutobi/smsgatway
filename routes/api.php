@@ -4,9 +4,11 @@ use App\Http\Controllers\ApiKeyController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\DeviceJobController;
 use App\Http\Controllers\DevicePairingController;
+use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\OrganisationController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\SmsMessageController;
 use App\Http\Controllers\SubscriptionController;
@@ -23,13 +25,25 @@ Route::prefix('auth')->group(function () {
 
     Route::post('/google/mobile', [GoogleAuthController::class, 'mobileLogin']);
 
+    // Mot de passe oublié — routes publiques, aucune auth nécessaire
+    Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword']);
+    Route::post('/reset-password', [PasswordResetController::class, 'reset']);
+
+    // Vérification d'email — lien signé cliqué depuis l'email, pas d'auth Sanctum
+    // (l'utilisateur clique depuis sa boîte mail, pas depuis l'app)
+    Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->middleware('signed')
+        ->name('verification.verify');
+
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [UserController::class, 'logout']);
         Route::get('/me', [UserController::class, 'me']);
         Route::put('/profile', [UserController::class, 'updateProfile']);
         Route::put('/profile/password', [UserController::class, 'changePassword']);
+        Route::post('/email/resend', [EmailVerificationController::class, 'resend']);
         Route::post('/2fa/setup', [TwoFactorController::class, 'setup']);
         Route::post('/2fa/confirm', [TwoFactorController::class, 'confirm']);
+        Route::post('/2fa/disable', [TwoFactorController::class, 'disable']);
     });
 
     // Auth spéciale : uniquement le temp_token avec ability '2fa-pending'
