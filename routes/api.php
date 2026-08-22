@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\ApiKeyController;
+use App\Http\Controllers\AdminAnalyticsController;
+use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\DeviceJobController;
 use App\Http\Controllers\DevicePairingController;
@@ -85,6 +87,13 @@ Route::middleware('auth:sanctum')->group(function(){
 
     Route::get('/sms-logs', [SmsMessageController::class, 'indexForUser']);
     Route::get('/sms-logs/{sms}', [SmsMessageController::class, 'showForUser']);
+
+    // ---------- Panneau super-admin (staff plateforme, role 'Admin') ----------
+    Route::prefix('admin')->middleware('admin')->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'overview']);
+        Route::get('/users', [AdminDashboardController::class, 'users']);
+        Route::get('/analytics', [AdminAnalyticsController::class, 'overview']);
+    });
 
 });
 

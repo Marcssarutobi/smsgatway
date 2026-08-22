@@ -56,4 +56,12 @@ return [
         'webhook_secret' => env('FEDAPAY_WEBHOOK_SECRET'),
     ],
 
+    'google_analytics' => [
+        // Identifiant numérique de la propriété GA4 (GA4 > Paramètres de la propriété)
+        'property_id' => env('GOOGLE_ANALYTICS_PROPERTY_ID'),
+        // Chemin serveur vers le fichier JSON du compte de service — JAMAIS
+        // commité dans git (voir GoogleAnalyticsService pour la procédure complète)
+        'credentials_path' => env('GOOGLE_ANALYTICS_CREDENTIALS_PATH'),
+    ],
+
 ];

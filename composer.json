@@ -9,6 +9,7 @@
         "php": "^8.3",
         "bacon/bacon-qr-code": "^3.1",
         "fedapay/fedapay-php": "^0.4.8",
+        "firebase/php-jwt": "^7.0",
         "laravel/framework": "^13.8",
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.29",
