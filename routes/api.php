@@ -22,14 +22,14 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::prefix('auth')->group(function () {
-    Route::post('/register', [UserController::class, 'register']);
-    Route::post('/login', [UserController::class, 'login']);
+    Route::post('/register', [UserController::class, 'register'])->middleware('throttle:register');
+    Route::post('/login', [UserController::class, 'login'])->middleware('throttle:login');
 
-    Route::post('/google/mobile', [GoogleAuthController::class, 'mobileLogin']);
+    Route::post('/google/mobile', [GoogleAuthController::class, 'mobileLogin'])->middleware('throttle:google-auth');
 
     // Mot de passe oublié — routes publiques, aucune auth nécessaire
-    Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword']);
-    Route::post('/reset-password', [PasswordResetController::class, 'reset']);
+    Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword'])->middleware('throttle:forgot-password');
+    Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:reset-password');
 
     // Vérification d'email — lien signé cliqué depuis l'email, pas d'auth Sanctum
     // (l'utilisateur clique depuis sa boîte mail, pas depuis l'app)
@@ -44,13 +44,13 @@ Route::prefix('auth')->group(function () {
         Route::put('/profile/password', [UserController::class, 'changePassword']);
         Route::post('/email/resend', [EmailVerificationController::class, 'resend']);
         Route::post('/2fa/setup', [TwoFactorController::class, 'setup']);
-        Route::post('/2fa/confirm', [TwoFactorController::class, 'confirm']);
+        Route::post('/2fa/confirm', [TwoFactorController::class, 'confirm'])->middleware('throttle:2fa');
         Route::post('/2fa/disable', [TwoFactorController::class, 'disable']);
     });
 
     // Auth spéciale : uniquement le temp_token avec ability '2fa-pending'
     Route::middleware(['auth:sanctum', 'ability:2fa-pending'])->group(function () {
-        Route::post('/2fa/verify', [TwoFactorController::class, 'verify']);
+        Route::post('/2fa/verify', [TwoFactorController::class, 'verify'])->middleware('throttle:2fa');
     });
 });
 
@@ -103,7 +103,7 @@ Route::get('/plans', [PlanController::class, 'index']);
 Route::post('/webhooks/fedapay', [PaymentController::class, 'webhook']);
 
 // ---------- API SMS (authentification par clé API, pas Sanctum) ----------
-Route::prefix('v1')->middleware('api.key')->group(function () {
+Route::prefix('v1')->middleware(['api.key', 'throttle:sms-api'])->group(function () {
     Route::post('/sms/send', [SmsMessageController::class, 'store']);
     Route::post('/sms/send-bulk', [SmsMessageController::class, 'storeBulk']);
     Route::get('/sms/{sms}', [SmsMessageController::class, 'show']);
@@ -112,9 +112,9 @@ Route::prefix('v1')->middleware('api.key')->group(function () {
 
 // ---------- App mobile (authentification par device_token) ----------
 Route::prefix('device')->group(function () {
-    Route::post('/pair', [DevicePairingController::class, 'store']);
+    Route::post('/pair', [DevicePairingController::class, 'store'])->middleware('throttle:device-pair');
 
-    Route::middleware('device.auth')->group(function () {
+    Route::middleware(['device.auth', 'throttle:device-polling'])->group(function () {
         Route::get('/jobs/pending', [DeviceJobController::class, 'pending']);
         Route::post('/jobs/{sms}/report', [DeviceJobController::class, 'report']);
         Route::post('/heartbeat', [DeviceJobController::class, 'heartbeat']);
