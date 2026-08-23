@@ -3,11 +3,13 @@
 use App\Http\Controllers\ApiKeyController;
 use App\Http\Controllers\AdminAnalyticsController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\DeviceJobController;
 use App\Http\Controllers\DevicePairingController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrganisationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PasswordResetController;
@@ -89,15 +91,37 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('/sms-logs/{sms}', [SmsMessageController::class, 'showForUser']);
 
     // ---------- Panneau super-admin (staff plateforme, role 'Admin') ----------
+    // Notifications (client ET staff — cloche générique de l'appli)
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/fcm-token', [NotificationController::class, 'registerFcmToken']);
+
+    // ---------- Panneau super-admin (staff plateforme, role 'Admin') ----------
     Route::prefix('admin')->middleware('admin')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'overview']);
         Route::get('/users', [AdminDashboardController::class, 'users']);
+        Route::post('/users/{user}/suspend', [AdminDashboardController::class, 'suspendUser']);
+        Route::post('/users/{user}/activate', [AdminDashboardController::class, 'activateUser']);
         Route::get('/analytics', [AdminAnalyticsController::class, 'overview']);
+
+        // Gestion des tarifs
+        Route::get('/plans', [PlanController::class, 'adminIndex']);
+        Route::post('/plans', [PlanController::class, 'store']);
+        Route::put('/plans/{plan}', [PlanController::class, 'update']);
+        Route::delete('/plans/{plan}', [PlanController::class, 'destroy']);
+
+        // Messages du formulaire de contact
+        Route::get('/contacts', [ContactController::class, 'index']);
+        Route::post('/contacts/{contact}/read', [ContactController::class, 'markAsRead']);
     });
 
 });
 
 Route::get('/plans', [PlanController::class, 'index']);
+
+// Formulaire de contact public (page /contact du site)
+Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:contact');
 
 // Webhook FedaPay : appelé par les serveurs FedaPay, authentifié par signature HMAC (pas Sanctum)
 Route::post('/webhooks/fedapay', [PaymentController::class, 'webhook']);

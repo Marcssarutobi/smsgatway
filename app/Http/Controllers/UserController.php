@@ -84,6 +84,13 @@ class UserController extends Controller
         $user->sendEmailVerificationNotification();
         \App\Models\ApiKey::generatePairFor($user);
 
+        // Notifie le staff plateforme (visible dans la cloche du panneau
+        // super-admin), pour suivre les inscriptions sans avoir à
+        // constamment vérifier la base de données.
+        User::where('role', 'Admin')->get()->each(
+            fn ($admin) => $admin->notify(new \App\Notifications\NewUserSignedUpNotification($user))
+        );
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Device;
+use App\Notifications\DeviceWentOfflineNotification;
 use Illuminate\Console\Command;
 
 class MarkStaleDevicesOffline extends Command
@@ -18,14 +19,24 @@ class MarkStaleDevicesOffline extends Command
 
     public function handle(): int
     {
-        $updated = Device::where('status', 'online')
+        $staleDevices = Device::where('status', 'online')
             ->where(function ($query) {
                 $query->whereNull('last_seen_at')
                     ->orWhere('last_seen_at', '<', now()->subMinutes(self::STALE_AFTER_MINUTES));
             })
-            ->update(['status' => 'offline']);
+            ->with('user')
+            ->get();
 
-        $this->info("{$updated} device(s) passé(s) hors ligne (pas de heartbeat depuis " . self::STALE_AFTER_MINUTES . " min).");
+        foreach ($staleDevices as $device) {
+            $device->update(['status' => 'offline']);
+
+            // Notifie le client que sa passerelle SMS ne répond plus — utile
+            // pour qu'il aille vérifier son téléphone avant que ses SMS en
+            // attente ne s'accumulent sans jamais partir.
+            $device->user?->notify(new DeviceWentOfflineNotification($device));
+        }
+
+        $this->info(count($staleDevices) . " device(s) passé(s) hors ligne (pas de heartbeat depuis " . self::STALE_AFTER_MINUTES . " min).");
 
         return self::SUCCESS;
     }

@@ -1,58 +1,60 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SMS Gateway — Backend (API)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+API Laravel du SaaS SMS Gateway : transforme des téléphones Android en passerelles d'envoi de SMS, pilotables via une API REST, avec facturation par abonnement (FedaPay), 2FA, et un panneau d'administration plateforme.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Laravel 13** / PHP 8.3
+- **Laravel Sanctum** pour l'authentification API (tokens, abilities)
+- **FedaPay** pour la facturation des abonnements (XOF)
+- **Google2FA** pour la double authentification
+- **Firebase Cloud Messaging (FCM)** pour réveiller les téléphones-passerelles et notifier les utilisateurs
+- **Google Analytics Data API (GA4)** pour les statistiques de trafic dans le panneau admin
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Installation locale
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Lance le serveur :
+```bash
+php artisan serve
+```
 
-## Contributing
+Les tâches planifiées (reset quota SMS quotidien, détection des devices hors ligne) nécessitent que le scheduler tourne :
+```bash
+php artisan schedule:work   # à laisser tourner en local pendant le développement
+```
+En production, une seule tâche cron suffit : `* * * * * php artisan schedule:run`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Variables d'environnement importantes
 
-## Code of Conduct
+Toutes documentées avec leur usage dans `.env.example`. Points d'attention :
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+| Variable | Sert à |
+|---|---|
+| `FEDAPAY_*` | Paiement des abonnements |
+| `GOOGLE_WEB_CLIENT_ID` / `GOOGLE_ANDROID_CLIENT_ID` | Connexion Google (web + mobile) |
+| `FCM_SERVER_KEY` | Réveil des devices + notifications push aux utilisateurs |
+| `GOOGLE_ANALYTICS_PROPERTY_ID` / `GOOGLE_ANALYTICS_CREDENTIALS_PATH` | Stats de trafic dans le panneau admin (`/staff`) — voir `app/Services/GoogleAnalyticsService.php` pour la procédure de configuration complète |
 
-## Security Vulnerabilities
+## Rôles
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Deux rôles seulement : `Client` (utilisateur normal du SaaS) et `Admin` (staff de la plateforme, accès à `/api/admin/*`). Pas de notion d'équipe/membres au sein d'un compte — chaque `User` a sa propre `Organisation` individuelle.
 
-## License
+## Modules principaux
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- **Devices** : pairing d'un téléphone Android comme passerelle SMS, heartbeat, gestion des SIM
+- **SMS** : envoi via l'API (`/api/v1/sms`), dispatch vers le device, suivi de statut (delivered/failed)
+- **Abonnements** : plans (`/api/plans`), paiement FedaPay, quota mensuel de SMS
+- **Contact** : formulaire public (`/api/contact`), notifie le staff
+- **Notifications** : système générique (in-app + push FCM) pour clients et staff — voir `app/Notifications/`
+- **Panneau admin** (`/api/admin/*`) : stats globales, gestion des utilisateurs, des tarifs, des messages de contact, trafic Google Analytics
+
+## Tests
+
+⚠️ Seuls les stubs par défaut de Laravel sont présents actuellement (`tests/Feature/ExampleTest.php`). Aucune fonctionnalité métier n'est encore couverte par des tests automatisés — à prioriser avant une montée en charge importante.

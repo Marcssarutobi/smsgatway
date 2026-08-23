@@ -79,4 +79,22 @@ class AdminDashboardController extends Controller
 
         return response()->json($query->latest()->paginate(20));
     }
+
+    // POST /api/admin/users/{user}/suspend — bloque l'accès (ex: abus, impayé confirmé manuellement)
+    public function suspendUser(User $user): JsonResponse
+    {
+        abort_if($user->role === 'Admin', 403, "On ne suspend pas un compte staff depuis cet écran.");
+
+        $user->update(['status' => 'suspendu']);
+
+        return response()->json(['message' => "{$user->name} a été suspendu."]);
+    }
+
+    // POST /api/admin/users/{user}/activate — lève une suspension
+    public function activateUser(User $user): JsonResponse
+    {
+        $user->update(['status' => 'actif']);
+
+        return response()->json(['message' => "{$user->name} a été réactivé."]);
+    }
 }

@@ -40,6 +40,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->ip());
         });
 
+        // Formulaire de contact public : évite le spam/l'abus de la boîte de
+        // réception admin, sans être trop restrictif pour un vrai visiteur.
+        RateLimiter::for('contact', function ($request) {
+            return Limit::perMinute(3)->by($request->ip());
+        });
+
         // Mot de passe oublié : limite par email ciblé, pour empêcher qu'on
         // bombarde la boîte mail d'un utilisateur avec des liens de reset,
         // et par IP en complément contre l'énumération de comptes.
