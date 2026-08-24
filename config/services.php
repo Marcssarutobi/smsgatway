@@ -61,7 +61,9 @@ return [
         'property_id' => env('GOOGLE_ANALYTICS_PROPERTY_ID'),
         // Chemin serveur vers le fichier JSON du compte de service — JAMAIS
         // commité dans git (voir GoogleAnalyticsService pour la procédure complète)
-        'credentials_path' => env('GOOGLE_ANALYTICS_CREDENTIALS_PATH'),
+        'credentials_path' => env('GOOGLE_ANALYTICS_CREDENTIALS_PATH')
+            ? base_path(env('GOOGLE_ANALYTICS_CREDENTIALS_PATH'))
+            : null,
     ],
 
 ];
