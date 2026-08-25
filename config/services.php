@@ -39,6 +39,15 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect' => env('GOOGLE_REDIRECT_URI'), // ex: http://localhost:8000/api/auth/google/callback
+        // Audiences valides pour la connexion mobile (GoogleAuthController::mobileLogin).
+        // Lues ici via config() plutôt que env() directement dans le contrôleur :
+        // env() en dehors de config/*.php renvoie null dès que php artisan
+        // config:cache a été lancé (le .env n'est alors plus relu du tout) —
+        // c'est ce qui causait "Token non destiné à cette application" pour
+        // TOUT token, même parfaitement valide, une fois le cache généré en prod.
+        'web_client_id' => env('GOOGLE_WEB_CLIENT_ID'),
+        'android_client_id' => env('GOOGLE_ANDROID_CLIENT_ID'),
+        'ios_client_id' => env('GOOGLE_IOS_CLIENT_ID'),
     ],
 
     'fcm' => [

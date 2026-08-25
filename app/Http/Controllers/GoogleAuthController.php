@@ -109,9 +109,9 @@ class GoogleAuthController extends Controller
         // Vérifie que le token est bien destiné à TON app (évite qu'un token
         // Google d'une autre application ne soit accepté ici)
         $validAudiences = [
-            env('GOOGLE_WEB_CLIENT_ID'),
-            env('GOOGLE_ANDROID_CLIENT_ID'),
-            env('GOOGLE_IOS_CLIENT_ID'),
+            config('services.google.web_client_id'),
+            config('services.google.android_client_id'),
+            config('services.google.ios_client_id'),
         ];
 
         if (!in_array($payload['aud'] ?? null, $validAudiences)) {
