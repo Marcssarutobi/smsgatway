@@ -9,6 +9,7 @@ class Subscription extends Model
     protected $fillable = [
         'user_id', 'plan_id', 'status', 'sms_used',
         'current_period_start', 'current_period_end',
+        'channel', 'duration_months', 'sms_rate_applied', 'amount_paid',
     ];
 
     protected $casts = [

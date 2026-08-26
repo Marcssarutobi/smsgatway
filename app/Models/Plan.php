@@ -16,4 +16,13 @@ class Plan extends Model
     {
         return $this->hasMany(Subscription::class);
     }
+
+    // Coût SMS du quota complet de ce plan, en mode Réseau — jamais stocké en
+    // dur sur le plan lui-même car le tarif SMS (voir SmsPricingSetting) peut
+    // changer indépendamment du prix du plan (voir PaymentController::checkout,
+    // qui appelle ceci avec le tarif figé au moment précis de l'achat).
+    public function networkModeSmsCost(float $pricePerSms): float
+    {
+        return round($this->sms_quota_monthly * $pricePerSms, 2);
+    }
 }

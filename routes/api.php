@@ -14,6 +14,7 @@ use App\Http\Controllers\OrganisationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\SmsPricingController;
 use App\Http\Controllers\SmsMessageController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TwoFactorController;
@@ -107,6 +108,7 @@ Route::middleware('auth:sanctum')->group(function(){
 
         // Gestion des tarifs
         Route::get('/plans', [PlanController::class, 'adminIndex']);
+        Route::put('/sms-pricing', [SmsPricingController::class, 'update']);
         Route::post('/plans', [PlanController::class, 'store']);
         Route::put('/plans/{plan}', [PlanController::class, 'update']);
         Route::delete('/plans/{plan}', [PlanController::class, 'destroy']);
@@ -119,6 +121,7 @@ Route::middleware('auth:sanctum')->group(function(){
 });
 
 Route::get('/plans', [PlanController::class, 'index']);
+Route::get('/sms-pricing', [SmsPricingController::class, 'show']);
 
 // Formulaire de contact public (page /contact du site)
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:contact');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\Plan;
+use App\Models\SmsPricingSetting;
 use App\Models\User;
 use FedaPay\Error\SignatureVerification;
 use FedaPay\FedaPay;
@@ -21,25 +22,46 @@ class PaymentController extends Controller
     }
 
     /**
-     * Démarre le paiement d'un plan payant, ou active immédiatement un plan gratuit (ex: Trial).
-     * Appelé par le bouton "Confirmer le changement de plan" du front.
+     * Démarre le paiement d'un plan (Device ou Réseau, 1/3/6/12 mois), ou active
+     * immédiatement si le montant total calculé est nul. Le prix est TOUJOURS
+     * recalculé côté serveur à partir du plan + du tarif SMS en vigueur — on ne
+     * fait jamais confiance à un montant envoyé par le client.
      */
     public function checkout(Request $request)
     {
-        $request->validate(['plan_id' => 'required|exists:plans,id']);
+        $validated = $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+            'channel' => 'required|in:device,network',
+            'duration_months' => 'required|integer|in:1,3,6,12',
+        ]);
 
-        $plan = Plan::findOrFail($request->plan_id);
+        $plan = Plan::findOrFail($validated['plan_id']);
         $user = $request->user();
+        $channel = $validated['channel'];
+        $durationMonths = (int) $validated['duration_months'];
 
-        // Plan gratuit : pas besoin de passer par FedaPay, activation immédiate.
-        if ((float) $plan->price <= 0) {
+        // Tarif SMS figé MAINTENANT : si l'admin le change demain, ça n'affecte
+        // jamais cette souscription déjà payée (voir migration subscriptions).
+        $smsRateApplied = null;
+        $smsCostPerMonth = 0;
+        if ($channel === 'network') {
+            $smsRateApplied = (float) SmsPricingSetting::current()->price_per_sms;
+            $smsCostPerMonth = $plan->networkModeSmsCost($smsRateApplied);
+        }
+
+        $totalAmount = ((float) $plan->price + $smsCostPerMonth) * $durationMonths;
+
+        // Gratuit (Trial en mode Device typiquement) : pas besoin de FedaPay.
+        if ($totalAmount <= 0) {
             if ($user->hasAlreadyUsedPlan($plan)) {
                 return response()->json([
                     'message' => "Vous avez déjà utilisé le plan {$plan->name}. Ce plan gratuit n'est utilisable qu'une seule fois par compte.",
                 ], 422);
             }
 
-            $subscription = $this->activateSubscription($user, $plan);
+            $subscription = $this->activateSubscription(
+                $user, $plan, $channel, $durationMonths, $smsRateApplied, $totalAmount
+            );
 
             return response()->json([
                 'free' => true,
@@ -50,7 +72,7 @@ class PaymentController extends Controller
         $payment = Payment::create([
             'user_id' => $user->id,
             'plan_id' => $plan->id,
-            'amount' => $plan->price,
+            'amount' => $totalAmount,
             'currency' => $plan->currency,
             'status' => 'pending',
         ]);
@@ -58,10 +80,13 @@ class PaymentController extends Controller
         try {
             [$firstname, $lastname] = $this->splitName($user->name);
 
+            $description = "Abonnement plan {$plan->name} ({$durationMonths} mois"
+                . ($channel === 'network' ? ', mode Réseau' : '') . ") - SMS Gateway";
+
             $transaction = Transaction::create([
-                'description' => "Abonnement plan {$plan->name} - SMS Gateway",
+                'description' => $description,
                 // FedaPay attend un montant entier (pas de centimes) pour le XOF
-                'amount' => (int) round((float) $plan->price),
+                'amount' => (int) round($totalAmount),
                 'currency' => ['iso' => $plan->currency],
                 'callback_url' => rtrim(config('app.frontend_url'), '/')
                     . '/admin/subscription/callback?payment_id=' . $payment->id,
@@ -74,6 +99,9 @@ class PaymentController extends Controller
                     'payment_id' => $payment->id,
                     'user_id' => $user->id,
                     'plan_id' => $plan->id,
+                    'channel' => $channel,
+                    'duration_months' => $durationMonths,
+                    'sms_rate_applied' => $smsRateApplied,
                 ],
             ]);
 
@@ -160,7 +188,14 @@ class PaymentController extends Controller
         switch ($event->name) {
             case 'transaction.approved':
                 if (!$payment->isApproved()) {
-                    $subscription = $this->activateSubscription($payment->user, $payment->plan);
+                    $metadata = $data['entity']['custom_metadata'] ?? [];
+                    $channel = $metadata['channel'] ?? 'device';
+                    $durationMonths = (int) ($metadata['duration_months'] ?? 1);
+                    $smsRateApplied = isset($metadata['sms_rate_applied']) ? (float) $metadata['sms_rate_applied'] : null;
+
+                    $subscription = $this->activateSubscription(
+                        $payment->user, $payment->plan, $channel, $durationMonths, $smsRateApplied, (float) $payment->amount
+                    );
                     $payment->update(['status' => 'approved', 'subscription_id' => $subscription->id]);
                 }
                 break;
@@ -183,10 +218,18 @@ class PaymentController extends Controller
 
     /**
      * Active un nouveau plan pour l'utilisateur : annule l'abonnement actif précédent
-     * et démarre une nouvelle période de facturation d'un mois avec un quota remis à zéro.
+     * et démarre une nouvelle période de facturation de la durée choisie.
+     * Synchronise aussi organisation.preferred_sms_channel, qui est ce que
+     * DispatchSmsJob consulte réellement au moment d'envoyer un SMS.
      */
-    private function activateSubscription(User $user, Plan $plan)
-    {
+    private function activateSubscription(
+        User $user,
+        Plan $plan,
+        string $channel = 'device',
+        int $durationMonths = 1,
+        ?float $smsRateApplied = null,
+        float $amountPaid = 0,
+    ) {
         $user->subscriptions()->where('status', 'active')->update(['status' => 'cancelled']);
 
         $subscription = $user->subscriptions()->create([
@@ -194,8 +237,17 @@ class PaymentController extends Controller
             'status' => 'active',
             'sms_used' => 0,
             'current_period_start' => now(),
-            'current_period_end' => now()->addMonth(),
+            'current_period_end' => now()->addMonths($durationMonths),
+            'channel' => $channel,
+            'duration_months' => $durationMonths,
+            'sms_rate_applied' => $smsRateApplied,
+            'amount_paid' => $amountPaid,
         ]);
+
+        $user->organisation()->updateOrCreate(
+            ['user_id' => $user->id],
+            ['preferred_sms_channel' => $channel]
+        );
 
         $user->notify(new \App\Notifications\SubscriptionActivatedNotification($plan));
 
