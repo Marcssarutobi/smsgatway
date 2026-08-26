@@ -75,4 +75,26 @@ return [
             : null,
     ],
 
+    'mtn' => [
+        // Interrupteur général : tant que false, DispatchSmsJob ne bascule
+        // jamais vers MTN et se comporte exactement comme avant (utile pour
+        // activer progressivement, ou couper immédiatement en cas de souci
+        // sans avoir à toucher au code).
+        'enabled' => (bool) env('MTN_SMS_ENABLED', false),
+        'base_url' => env('MTN_SMS_BASE_URL', 'https://api.mtn.com'),
+        'token_url' => env('MTN_SMS_TOKEN_URL', 'https://api.mtn.com/v1/oauth/access_token/accesstoken'),
+        // Consumer key/secret de l'app créée sur developers.mtn.com (SMS v3 API)
+        'client_id' => env('MTN_SMS_CLIENT_ID'),
+        'client_secret' => env('MTN_SMS_CLIENT_SECRET'),
+        // Short code approuvé par MTN pour ton app (obligatoire côté MTN,
+        // même si senderAddress est aussi renseigné)
+        'service_code' => env('MTN_SMS_SERVICE_CODE'),
+        // Optionnel : nom alphanumérique affiché comme expéditeur (ex: "SMSGATEWAY").
+        // Si vide, MTN utilise le service_code comme identifiant d'envoi.
+        'sender_address' => env('MTN_SMS_SENDER_ADDRESS'),
+        // Indicatif pays utilisé pour normaliser les numéros locaux du client
+        // (229 = Bénin). À ajuster si tu sers un autre pays supporté par MTN.
+        'country_code' => env('MTN_SMS_COUNTRY_CODE', '229'),
+    ],
+
 ];

@@ -35,26 +35,70 @@ class DispatchSmsJob implements ShouldQueue
 
         $deviceSim = $this->pickAvailableSim();
 
-        if (!$deviceSim) {
-            // Aucun device en ligne avec du quota restant : on retente plus tard,
-            // avec un délai qui augmente à chaque tentative (voir $backoff).
-            $delay = $this->backoff[$this->attempts() - 1] ?? end($this->backoff);
-            $this->release($delay);
+        if ($deviceSim) {
+            $this->sms->update([
+                'device_sim_id' => $deviceSim->id,
+                'channel' => 'device',
+                'status' => 'queued',
+            ]);
+
+            $this->sms->statusLogs()->create([
+                'status' => 'queued',
+                'details' => "Assigné à la SIM #{$deviceSim->id} (device #{$deviceSim->device_id})",
+            ]);
+
+            // Réveille l'app mobile concernée via FCM
+            app(\App\Services\FcmService::class)->sendWakeUp($deviceSim->device);
             return;
         }
 
-        $this->sms->update([
-            'device_sim_id' => $deviceSim->id,
-            'status' => 'queued',
-        ]);
+        // Aucun téléphone disponible : si l'API MTN est configurée et activée,
+        // on l'utilise en secours plutôt que d'attendre qu'un device revienne
+        // en ligne. Sinon on retombe sur le comportement historique (retry).
+        if (config('services.mtn.enabled') && config('services.mtn.service_code')) {
+            $this->sendViaMtn();
+            return;
+        }
 
-        $this->sms->statusLogs()->create([
-            'status' => 'queued',
-            'details' => "Assigné à la SIM #{$deviceSim->id} (device #{$deviceSim->device_id})",
-        ]);
+        // Aucun device en ligne avec du quota restant, et MTN non configuré :
+        // on retente plus tard, avec un délai qui augmente à chaque tentative
+        // (voir $backoff).
+        $delay = $this->backoff[$this->attempts() - 1] ?? end($this->backoff);
+        $this->release($delay);
+    }
 
-        // Réveille l'app mobile concernée via FCM
-        app(\App\Services\FcmService::class)->sendWakeUp($deviceSim->device);
+    // Envoi de secours via l'API MTN SMS v3 quand aucun téléphone appairé
+    // n'est disponible. En cas d'échec MTN (réseau, credentials, refus), on
+    // retombe sur le même mécanisme de retry/backoff que pour un device
+    // indisponible plutôt que d'échouer immédiatement.
+    private function sendViaMtn(): void
+    {
+        try {
+            $result = \App\Services\MtnSmsService::fromConfig()->send(
+                recipient: $this->sms->recipient,
+                message: $this->sms->content,
+                clientCorrelatorId: (string) $this->sms->id,
+            );
+
+            $this->sms->update([
+                'channel' => 'mtn',
+                'status' => 'sent',
+                'sent_at' => now(),
+            ]);
+
+            $this->sms->statusLogs()->create([
+                'status' => 'sent',
+                'details' => "Envoyé via l'API MTN (transactionId: " . ($result['transactionId'] ?? 'inconnu') . ')',
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Échec envoi SMS via MTN', [
+                'sms_id' => $this->sms->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            $delay = $this->backoff[$this->attempts() - 1] ?? end($this->backoff);
+            $this->release($delay);
+        }
     }
 
     private function pickAvailableSim(): ?DeviceSim
