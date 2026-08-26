@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Notifications\Messages\MailMessage;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -93,6 +95,20 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('sms-api', function ($request) {
             $key = $request->bearerToken() ?? $request->ip();
             return Limit::perMinute(60)->by($key);
+        });
+
+        // Par défaut, Illuminate\Auth\Notifications\VerifyEmail (déclenchée par
+        // $user->sendEmailVerificationNotification(), voir UserController::register)
+        // rend un email au format markdown. On la redirige vers notre propre
+        // template HTML pour rester cohérent avec les autres emails (reset
+        // password, abonnement activé).
+        VerifyEmail::toMailUsing(function ($notifiable, string $url) {
+            return (new MailMessage)
+                ->subject('Confirmez votre adresse email')
+                ->view('emails.verify-email', [
+                    'url' => $url,
+                    'name' => $notifiable->name,
+                ]);
         });
     }
 }

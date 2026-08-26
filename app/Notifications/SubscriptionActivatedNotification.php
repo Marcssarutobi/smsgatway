@@ -24,19 +24,14 @@ class SubscriptionActivatedNotification extends Notification implements ShouldQu
     public function toMail($notifiable): MailMessage
     {
         $dashboardUrl = rtrim(config('app.frontend_url'), '/') . '/admin/abonnement';
-        $isPaid = (float) $this->plan->price > 0;
 
-        $mail = (new MailMessage)
+        return (new MailMessage)
             ->subject('Votre plan ' . $this->plan->name . ' est activé')
-            ->greeting('Merci pour votre confiance !');
-
-        $mail = $isPaid
-            ? $mail->line('Votre paiement a été confirmé et votre plan ' . $this->plan->name . ' est maintenant actif.')
-            : $mail->line('Votre plan ' . $this->plan->name . ' est maintenant actif.');
-
-        return $mail
-            ->line('Quota mensuel : ' . $this->plan->sms_quota_monthly . ' SMS.')
-            ->action('Voir mon abonnement', $dashboardUrl)
-            ->line('Vous pouvez suivre votre consommation à tout moment depuis votre tableau de bord.');
+            ->view('emails.subscription-activated', [
+                'planName' => $this->plan->name,
+                'isPaid' => (float) $this->plan->price > 0,
+                'smsQuota' => $this->plan->sms_quota_monthly,
+                'dashboardUrl' => $dashboardUrl,
+            ]);
     }
 }
