@@ -6,7 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class Organisation extends Model
 {
-    protected $fillable = ['user_id', 'name', 'signature', 'logo', 'website', 'phone', 'address'];
+    protected $fillable = [
+        'user_id', 'name', 'signature', 'logo', 'website', 'phone', 'address',
+        'mtn_sender_address', 'mtn_country_code',
+    ];
 
     public function user()
     {

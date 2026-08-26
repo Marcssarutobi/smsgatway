@@ -19,11 +19,18 @@ class OrganisationController extends Controller
             'website' => 'nullable|url',
             'phone' => 'nullable|string|max:30',
             'address' => 'nullable|string|max:255',
+            // Uniquement utilisés si ce client envoie ses SMS via l'API MTN
+            // plutôt que via un téléphone Android appairé (voir MtnSmsService).
+            'mtn_sender_address' => 'nullable|string|max:30',
+            'mtn_country_code' => 'nullable|string|max:3',
         ]);
 
         $organisation = $request->user()->organisation()->updateOrCreate(
             ['user_id' => $request->user()->id],
-            $request->only('name', 'signature', 'website', 'phone', 'address')
+            $request->only(
+                'name', 'signature', 'website', 'phone', 'address',
+                'mtn_sender_address', 'mtn_country_code'
+            )
         );
 
         return response()->json($organisation);

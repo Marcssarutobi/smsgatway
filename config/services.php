@@ -83,17 +83,16 @@ return [
         'enabled' => (bool) env('MTN_SMS_ENABLED', false),
         'base_url' => env('MTN_SMS_BASE_URL', 'https://api.mtn.com'),
         'token_url' => env('MTN_SMS_TOKEN_URL', 'https://api.mtn.com/v1/oauth/access_token/accesstoken'),
-        // Consumer key/secret de l'app créée sur developers.mtn.com (SMS v3 API)
+        // Identifiants MTN de LA PLATEFORME (un seul compte MTN Developer
+        // pour tous les clients) : consumer key/secret de l'app créée sur
+        // developers.mtn.com, et le short code approuvé associé.
         'client_id' => env('MTN_SMS_CLIENT_ID'),
         'client_secret' => env('MTN_SMS_CLIENT_SECRET'),
-        // Short code approuvé par MTN pour ton app (obligatoire côté MTN,
-        // même si senderAddress est aussi renseigné)
         'service_code' => env('MTN_SMS_SERVICE_CODE'),
-        // Optionnel : nom alphanumérique affiché comme expéditeur (ex: "SMSGATEWAY").
-        // Si vide, MTN utilise le service_code comme identifiant d'envoi.
-        'sender_address' => env('MTN_SMS_SENDER_ADDRESS'),
-        // Indicatif pays utilisé pour normaliser les numéros locaux du client
-        // (229 = Bénin). À ajuster si tu sers un autre pays supporté par MTN.
+        // Repli utilisé uniquement si un client n'a pas encore configuré son
+        // propre indicatif pays dans les réglages de son organisation (voir
+        // MtnSmsService::forOrganisation) — sender_address, lui, n'a pas de
+        // repli global : chaque client doit renseigner le sien.
         'country_code' => env('MTN_SMS_COUNTRY_CODE', '229'),
     ],
 

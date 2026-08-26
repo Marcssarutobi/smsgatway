@@ -28,6 +28,12 @@ class MtnSmsService
     ) {
     }
 
+    /**
+     * Identifiants de la plateforme (client_id/secret/service_code) — les
+     * mêmes pour tous les clients, un seul compte MTN Developer approuvé.
+     * senderAddress/countryCode restent nuls ici : ce sont des réglages
+     * propres à chaque client, voir forOrganisation() ci-dessous.
+     */
     public static function fromConfig(): self
     {
         return new self(
@@ -36,8 +42,28 @@ class MtnSmsService
             clientId: config('services.mtn.client_id'),
             clientSecret: config('services.mtn.client_secret'),
             serviceCode: config('services.mtn.service_code'),
-            senderAddress: config('services.mtn.sender_address'),
+            senderAddress: null,
             countryCode: (string) config('services.mtn.country_code', '229'),
+        );
+    }
+
+    /**
+     * Même identifiants plateforme que fromConfig(), mais avec le
+     * senderAddress et le countryCode propres à l'organisation du client
+     * (configurés depuis son dashboard — voir OrganisationController) plutôt
+     * que des valeurs globales dans .env. C'est la méthode à utiliser pour
+     * envoyer un SMS au nom d'un client précis (voir DispatchSmsJob).
+     */
+    public static function forOrganisation(?\App\Models\Organisation $organisation): self
+    {
+        return new self(
+            baseUrl: rtrim((string) config('services.mtn.base_url'), '/'),
+            tokenUrl: (string) config('services.mtn.token_url'),
+            clientId: config('services.mtn.client_id'),
+            clientSecret: config('services.mtn.client_secret'),
+            serviceCode: config('services.mtn.service_code'),
+            senderAddress: $organisation?->mtn_sender_address,
+            countryCode: $organisation?->mtn_country_code ?? (string) config('services.mtn.country_code', '229'),
         );
     }
 

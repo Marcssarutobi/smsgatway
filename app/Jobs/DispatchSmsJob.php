@@ -74,7 +74,7 @@ class DispatchSmsJob implements ShouldQueue
     private function sendViaMtn(): void
     {
         try {
-            $result = \App\Services\MtnSmsService::fromConfig()->send(
+            $result = \App\Services\MtnSmsService::forOrganisation($this->sms->user->organisation)->send(
                 recipient: $this->sms->recipient,
                 message: $this->sms->content,
                 clientCorrelatorId: (string) $this->sms->id,
