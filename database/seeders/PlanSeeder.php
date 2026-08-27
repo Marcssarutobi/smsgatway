@@ -24,9 +24,9 @@ class PlanSeeder extends Seeder
             ],
             [
                 'name' => 'Starter',
-                'price' => 5000,
+                'price' => 3000,
                 'currency' => 'XOF',
-                'sms_quota_monthly' => 500,
+                'sms_quota_monthly' => 1000,
                 'max_devices' => 1,
                 'features' => [
                     'Support par email',
@@ -37,7 +37,7 @@ class PlanSeeder extends Seeder
             ],
             [
                 'name' => 'Business',
-                'price' => 20000,
+                'price' => 9000,
                 'currency' => 'XOF',
                 'sms_quota_monthly' => 3000,
                 'max_devices' => 3,
@@ -50,9 +50,9 @@ class PlanSeeder extends Seeder
             ],
             [
                 'name' => 'Pro',
-                'price' => 60000,
+                'price' => 13000,
                 'currency' => 'XOF',
-                'sms_quota_monthly' => 12000,
+                'sms_quota_monthly' => 6000,
                 'max_devices' => 10,
                 'features' => [
                     'Support dédié + SLA garanti',
