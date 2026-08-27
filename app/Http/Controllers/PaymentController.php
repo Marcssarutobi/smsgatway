@@ -156,6 +156,11 @@ class PaymentController extends Controller
      */
     public function webhook(Request $request)
     {
+        Log::info('FedaPay webhook reçu', [
+            'payload' => $request->getContent(),
+            'signature' => $request->header('X-FEDAPAY-SIGNATURE'),
+        ]);
+
         $secret = config('services.fedapay.webhook_secret');
         $payload = $request->getContent();
         $signature = $request->header('X-FEDAPAY-SIGNATURE') ?? $request->header('x-fedapay-signature');
