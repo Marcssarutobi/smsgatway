@@ -10,6 +10,7 @@ class Payment extends Model
         'user_id', 'plan_id', 'subscription_id',
         'fedapay_transaction_id', 'checkout_url',
         'amount', 'currency', 'status', 'raw_payload',
+        'type', 'sms_credit_purchased',
     ];
 
     protected $casts = [

@@ -27,7 +27,9 @@ class SmsMessageController extends Controller
         $subscription = $user->activeSubscription;
 
         if (!$subscription || !$subscription->hasQuotaLeft()) {
-            return response()->json(['message' => 'Quota d\'envoi mensuel dépassé'], 402);
+            return response()->json([
+                'message' => "Crédit SMS épuisé. Achetez un pack de recharge ou changez de plan pour continuer à envoyer des SMS.",
+            ], 402);
         }
 
         if (!$this->hasAvailableDevice($user)) {
@@ -76,7 +78,7 @@ class SmsMessageController extends Controller
                 : 0;
 
             return response()->json([
-                'message' => "Quota insuffisant pour envoyer à {$count} destinataires (il vous reste {$remaining} SMS ce mois-ci).",
+                'message' => "Crédit SMS insuffisant pour envoyer à {$count} destinataires (il vous reste {$remaining} SMS). Achetez un pack de recharge ou changez de plan.",
             ], 402);
         }
 

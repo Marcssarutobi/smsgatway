@@ -12,6 +12,7 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrganisationController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\SubscriptionTopupController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\SmsPricingController;
@@ -87,6 +88,10 @@ Route::middleware('auth:sanctum')->group(function(){
     // Paiement d'un plan payant via FedaPay
     Route::post('/subscription/checkout', [PaymentController::class, 'checkout']);
     Route::get('/subscription/payments/{payment}', [PaymentController::class, 'status']);
+
+    // Achat de crédit SMS supplémentaire sur un abonnement déjà actif
+    Route::get('/subscription/topup', [SubscriptionTopupController::class, 'show']);
+    Route::post('/subscription/topup/checkout', [SubscriptionTopupController::class, 'checkout']);
 
     Route::get('/sms-logs', [SmsMessageController::class, 'indexForUser']);
     Route::get('/sms-logs/{sms}', [SmsMessageController::class, 'showForUser']);

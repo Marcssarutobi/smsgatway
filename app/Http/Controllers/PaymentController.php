@@ -72,6 +72,7 @@ class PaymentController extends Controller
         $payment = Payment::create([
             'user_id' => $user->id,
             'plan_id' => $plan->id,
+            'type' => 'subscription',
             'amount' => $totalAmount,
             'currency' => $plan->currency,
             'status' => 'pending',
@@ -193,15 +194,23 @@ class PaymentController extends Controller
         switch ($event->name) {
             case 'transaction.approved':
                 if (!$payment->isApproved()) {
-                    $metadata = $data['entity']['custom_metadata'] ?? [];
-                    $channel = $metadata['channel'] ?? 'device';
-                    $durationMonths = (int) ($metadata['duration_months'] ?? 1);
-                    $smsRateApplied = isset($metadata['sms_rate_applied']) ? (float) $metadata['sms_rate_applied'] : null;
+                    if ($payment->type === 'topup') {
+                        // Recharge de crédit sur un abonnement déjà actif : on
+                        // ajoute simplement le crédit, aucune nouvelle période
+                        // ni changement de canal/plan.
+                        $payment->subscription?->increment('extra_sms_credit', $payment->sms_credit_purchased ?? 0);
+                        $payment->update(['status' => 'approved']);
+                    } else {
+                        $metadata = $data['entity']['custom_metadata'] ?? [];
+                        $channel = $metadata['channel'] ?? 'device';
+                        $durationMonths = (int) ($metadata['duration_months'] ?? 1);
+                        $smsRateApplied = isset($metadata['sms_rate_applied']) ? (float) $metadata['sms_rate_applied'] : null;
 
-                    $subscription = $this->activateSubscription(
-                        $payment->user, $payment->plan, $channel, $durationMonths, $smsRateApplied, (float) $payment->amount
-                    );
-                    $payment->update(['status' => 'approved', 'subscription_id' => $subscription->id]);
+                        $subscription = $this->activateSubscription(
+                            $payment->user, $payment->plan, $channel, $durationMonths, $smsRateApplied, (float) $payment->amount
+                        );
+                        $payment->update(['status' => 'approved', 'subscription_id' => $subscription->id]);
+                    }
                 }
                 break;
 

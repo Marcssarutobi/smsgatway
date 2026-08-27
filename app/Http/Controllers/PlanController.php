@@ -32,6 +32,9 @@ class PlanController extends Controller
             'max_devices' => 'required|integer|min:1',
             'features' => 'nullable|array',
             'active' => 'sometimes|boolean',
+            // Prix du pack de recharge (50% du quota, voir Plan::topupSmsCount).
+            // null/absent = achat de crédit désactivé pour ce plan.
+            'topup_price' => 'nullable|numeric|min:0',
         ]);
 
         $plan = Plan::create($validated);
@@ -49,6 +52,7 @@ class PlanController extends Controller
             'max_devices' => 'sometimes|integer|min:1',
             'features' => 'nullable|array',
             'active' => 'sometimes|boolean',
+            'topup_price' => 'nullable|numeric|min:0',
         ]);
 
         $plan->update($validated);
