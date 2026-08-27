@@ -251,7 +251,7 @@ class PaymentController extends Controller
 
         $user->organisation()->updateOrCreate(
             ['user_id' => $user->id],
-            ['preferred_sms_channel' => $channel]
+            ['preferred_sms_channel' => $channel, 'name' => $user->organisation?->name ?? ($user->name . ' - Organisation'),]
         );
 
         $user->notify(new \App\Notifications\SubscriptionActivatedNotification($plan));
