@@ -27,15 +27,22 @@ class Subscription extends Model
         return $this->belongsTo(Plan::class);
     }
 
+    // Quota total pour TOUTE la période souscrite (ex: plan 1000 SMS/mois
+    // souscrit pour 3 mois => 3000 SMS), et non juste le quota mensuel du plan.
+    public function smsQuotaTotal(): int
+    {
+        return $this->plan->sms_quota_monthly * max(1, $this->duration_months ?? 1);
+    }
+
     public function hasQuotaLeft(): bool
     {
-        return $this->sms_used < $this->plan->sms_quota_monthly;
+        return $this->sms_used < $this->smsQuotaTotal();
     }
 
     // Utilisé pour l'envoi groupé : vérifie qu'il reste assez de quota pour
     // TOUT le lot de destinataires, pas juste pour un seul message.
     public function hasQuotaLeftFor(int $count): bool
     {
-        return ($this->sms_used + $count) <= $this->plan->sms_quota_monthly;
+        return ($this->sms_used + $count) <= $this->smsQuotaTotal();
     }
 }

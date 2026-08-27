@@ -72,7 +72,7 @@ class SmsMessageController extends Controller
 
         if (!$subscription || !$subscription->hasQuotaLeftFor($count)) {
             $remaining = $subscription
-                ? max(0, $subscription->plan->sms_quota_monthly - $subscription->sms_used)
+                ? max(0, $subscription->smsQuotaTotal() - $subscription->sms_used)
                 : 0;
 
             return response()->json([
