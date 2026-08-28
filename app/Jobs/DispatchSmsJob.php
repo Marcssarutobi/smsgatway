@@ -33,6 +33,18 @@ class DispatchSmsJob implements ShouldQueue
             return;
         }
 
+        $subscription = $this->sms->user->activeSubscription;
+
+        // Le canal est décidé par l'abonnement du client (choisi à la
+        // souscription, voir PaymentController::activateSubscription), PAS
+        // en essayant un device puis en retombant sur MTN "si aucun trouvé" :
+        // ça évitait de facturer MTN pour un client Device dont le téléphone
+        // est juste momentanément hors-ligne (son plan ne couvre pas ce coût).
+        if ($subscription?->channel === 'network') {
+            $this->sendViaMtn();
+            return;
+        }
+
         $deviceSim = $this->pickAvailableSim();
 
         if ($deviceSim) {
@@ -52,17 +64,10 @@ class DispatchSmsJob implements ShouldQueue
             return;
         }
 
-        // Aucun téléphone disponible : si l'API MTN est configurée et activée,
-        // on l'utilise en secours plutôt que d'attendre qu'un device revienne
-        // en ligne. Sinon on retombe sur le comportement historique (retry).
-        if (config('services.mtn.enabled') && config('services.mtn.service_code')) {
-            $this->sendViaMtn();
-            return;
-        }
-
-        // Aucun device en ligne avec du quota restant, et MTN non configuré :
-        // on retente plus tard, avec un délai qui augmente à chaque tentative
-        // (voir $backoff).
+        // Client en mode Device sans téléphone dispo pour l'instant : on
+        // retente plus tard (délai croissant), on ne bascule PAS vers MTN
+        // même si MTN est activé globalement — ce n'est pas ce que ce client
+        // a payé.
         $delay = $this->backoff[$this->attempts() - 1] ?? end($this->backoff);
         $this->release($delay);
     }
@@ -73,6 +78,19 @@ class DispatchSmsJob implements ShouldQueue
     // indisponible plutôt que d'échouer immédiatement.
     private function sendViaMtn(): void
     {
+        if (!config('services.mtn.enabled') || !filled(config('services.mtn.service_code'))) {
+            // MTN pas (ou plus) configuré côté plateforme, alors qu'un client
+            // a un abonnement Réseau actif : on retente plutôt que d'échouer
+            // tout de suite, le temps qu'un admin corrige la config.
+            \Illuminate\Support\Facades\Log::warning('Envoi Réseau demandé mais MTN désactivé/non configuré', [
+                'sms_id' => $this->sms->id,
+            ]);
+
+            $delay = $this->backoff[$this->attempts() - 1] ?? end($this->backoff);
+            $this->release($delay);
+            return;
+        }
+
         try {
             $result = \App\Services\MtnSmsService::forOrganisation($this->sms->user->organisation)->send(
                 recipient: $this->sms->recipient,
@@ -122,15 +140,20 @@ class DispatchSmsJob implements ShouldQueue
             return;
         }
 
-        $reason = $exception instanceof \Illuminate\Queue\MaxAttemptsExceededException
-            ? "Aucun téléphone disponible pour envoyer ce SMS après plusieurs tentatives. Vérifiez qu'un appareil est appairé, en ligne, et que ses SIM ont du quota journalier restant."
-            : 'Échec du dispatch : ' . $exception->getMessage();
+        $subscription = $this->sms->user->activeSubscription;
+
+        $reason = match (true) {
+            $exception instanceof \Illuminate\Queue\MaxAttemptsExceededException && $subscription?->channel === 'network'
+                => "Échec de l'envoi via l'opérateur réseau après plusieurs tentatives. Vérifiez la configuration MTN (identifiants, service code) ou contactez le support.",
+            $exception instanceof \Illuminate\Queue\MaxAttemptsExceededException
+                => "Aucun téléphone disponible pour envoyer ce SMS après plusieurs tentatives. Vérifiez qu'un appareil est appairé, en ligne, et que ses SIM ont du quota journalier restant.",
+            default => 'Échec du dispatch : ' . $exception->getMessage(),
+        };
 
         $this->sms->updateStatus('failed', $reason);
 
-        // On ne facture pas au client un SMS qui n'a jamais pu être pris en
-        // charge par un téléphone : on recrédite son quota mensuel.
-        $subscription = $this->sms->user->activeSubscription;
+        // On ne facture pas au client un SMS qui n'a jamais pu être envoyé
+        // (ni via un téléphone, ni via MTN) : on recrédite son quota mensuel.
         if ($subscription && $subscription->sms_used > 0) {
             $subscription->decrement('sms_used');
         }

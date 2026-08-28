@@ -32,9 +32,11 @@ class SmsMessageController extends Controller
             ], 402);
         }
 
-        if (!$this->hasAvailableDevice($user)) {
+        if (!$this->canSendNow($subscription)) {
             return response()->json([
-                'message' => 'Aucun téléphone disponible pour envoyer ce SMS. Vérifiez qu\'un appareil est appairé, en ligne, et que ses SIM ont du quota journalier restant.',
+                'message' => $subscription->channel === 'network'
+                    ? "L'envoi via l'opérateur réseau n'est pas disponible pour le moment. Contactez le support."
+                    : 'Aucun téléphone disponible pour envoyer ce SMS. Vérifiez qu\'un appareil est appairé, en ligne, et que ses SIM ont du quota journalier restant.',
             ], 503);
         }
 
@@ -82,9 +84,11 @@ class SmsMessageController extends Controller
             ], 402);
         }
 
-        if (!$this->hasAvailableDevice($user)) {
+        if (!$this->canSendNow($subscription)) {
             return response()->json([
-                'message' => 'Aucun téléphone disponible pour envoyer ce SMS. Vérifiez qu\'un appareil est appairé, en ligne, et que ses SIM ont du quota journalier restant.',
+                'message' => $subscription->channel === 'network'
+                    ? "L'envoi via l'opérateur réseau n'est pas disponible pour le moment. Contactez le support."
+                    : 'Aucun téléphone disponible pour envoyer ce SMS. Vérifiez qu\'un appareil est appairé, en ligne, et que ses SIM ont du quota journalier restant.',
             ], 503);
         }
 
@@ -151,6 +155,19 @@ class SmsMessageController extends Controller
         }
 
         return response()->json($sms->load('statusLogs'));
+    }
+
+    // Vérifie, AVANT de mettre en file d'attente, que l'envoi a une chance
+    // raisonnable d'aboutir — mais le critère dépend du canal choisi par
+    // l'abonnement (subscription->channel), pas d'une simple disponibilité
+    // de téléphone : un client en mode Réseau n'a jamais besoin d'un device.
+    private function canSendNow(\App\Models\Subscription $subscription): bool
+    {
+        if ($subscription->channel === 'network') {
+            return (bool) config('services.mtn.enabled') && filled(config('services.mtn.service_code'));
+        }
+
+        return $this->hasAvailableDevice($subscription->user);
     }
 
     private function hasAvailableDevice(User $user): bool
