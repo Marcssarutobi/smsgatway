@@ -29,6 +29,27 @@ class AdminDashboardController extends Controller
         $smsThisMonth = SmsMessage::where('created_at', '>=', $startOfMonth)->count();
         $smsFailedThisMonth = SmsMessage::where('created_at', '>=', $startOfMonth)->where('status', 'failed')->count();
 
+        // Seuls les SMS réellement partis comptent pour la facturation MTN —
+        // un SMS 'pending'/'queued'/'failed' n'a jamais atteint l'opérateur,
+        // donc ne nous sera pas facturé.
+        $smsSentViaMtnThisMonth = SmsMessage::where('created_at', '>=', $startOfMonth)
+            ->where('channel', 'mtn')
+            ->whereIn('status', ['sent', 'delivered'])
+            ->count();
+
+        $smsSentViaDeviceThisMonth = SmsMessage::where('created_at', '>=', $startOfMonth)
+            ->where('channel', 'device')
+            ->whereIn('status', ['sent', 'delivered'])
+            ->count();
+
+        // Coût réellement dû à MTN ce mois-ci, au tarif unitaire actuellement
+        // configuré (Réglages > Tarif SMS). Si MTN facture un tarif de gros
+        // différent du tarif public affiché aux clients, ce montant n'est
+        // qu'une ESTIMATION à ce même tarif — ajuste si besoin le jour où un
+        // tarif de gros distinct est négocié avec MTN.
+        $smsUnitPrice = (float) \App\Models\SmsPricingSetting::current()->price_per_sms;
+        $mtnCostThisMonth = $smsSentViaMtnThisMonth * $smsUnitPrice;
+
         $activeSubscriptionsByPlan = Subscription::where('status', 'active')
             ->join('plans', 'plans.id', '=', 'subscriptions.plan_id')
             ->selectRaw('plans.name as plan_name, count(*) as total')
@@ -58,9 +79,18 @@ class AdminDashboardController extends Controller
                 'today' => $smsToday,
                 'this_month' => $smsThisMonth,
                 'failed_this_month' => $smsFailedThisMonth,
+                'sent_via_device_this_month' => $smsSentViaDeviceThisMonth,
+                'sent_via_mtn_this_month' => $smsSentViaMtnThisMonth,
             ],
             'subscriptions_by_plan' => $activeSubscriptionsByPlan,
             'revenue_this_month' => (float) $revenueThisMonth,
+            // Ce que la plateforme doit reverser à MTN ce mois-ci pour les
+            // SMS réellement envoyés via l'opérateur (mode Réseau), et ce
+            // qu'il reste une fois ce coût déduit du revenu encaissé — la
+            // marge disponible pour l'hébergement et les autres charges.
+            'mtn_cost_this_month' => round($mtnCostThisMonth, 2),
+            'sms_unit_price' => $smsUnitPrice,
+            'net_profit_this_month' => round((float) $revenueThisMonth - $mtnCostThisMonth, 2),
             'latest_signups' => $latestSignups,
         ]);
     }
