@@ -128,8 +128,12 @@ class MtnSmsService
 
     private function fetchAccessToken(): string
     {
-        $response = Http::asForm()->post($this->tokenUrl, [
-            'grant_type' => 'client_credentials',
+        // Format exact documenté par MTN (developers.mtn.com/getting-started/
+        // understanding-oauth-20) : grant_type est un paramètre de l'URL
+        // (query string), PAS un champ du corps du formulaire — contrairement
+        // à ce qu'on pourrait attendre d'un flux OAuth2 client_credentials
+        // "standard". Mélanger les deux (comme avant) provoque un 400 côté MTN.
+        $response = Http::asForm()->post($this->tokenUrl . '?grant_type=client_credentials', [
             'client_id' => $this->clientId,
             'client_secret' => $this->clientSecret,
         ]);
