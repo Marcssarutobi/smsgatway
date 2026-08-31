@@ -21,6 +21,7 @@ class SmsPricingController extends Controller
         $validated = $request->validate([
             'price_per_sms' => 'required|numeric|min:0',
             'currency' => 'nullable|string|size:3',
+            'network_enabled' => 'sometimes|boolean',
         ]);
 
         $setting = SmsPricingSetting::current();

@@ -164,7 +164,13 @@ class SmsMessageController extends Controller
     private function canSendNow(\App\Models\Subscription $subscription): bool
     {
         if ($subscription->channel === 'network') {
-            return (bool) config('services.mtn.enabled') && filled(config('services.mtn.service_code'));
+            // Deux garde-fous cumulatifs : MTN_SMS_ENABLED (.env, nécessite un
+            // accès serveur — le filet de sécurité ultime) ET network_enabled
+            // (basculable par le staff depuis /staff, sans redéploiement).
+            // Les deux doivent être actifs pour que l'envoi réseau fonctionne.
+            return (bool) config('services.mtn.enabled')
+                && \App\Models\SmsPricingSetting::current()->network_enabled
+                && filled(config('services.mtn.service_code'));
         }
 
         return $this->hasAvailableDevice($subscription->user);
