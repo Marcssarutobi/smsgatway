@@ -133,9 +133,14 @@ class MtnSmsService
         // (query string), PAS un champ du corps du formulaire — contrairement
         // à ce qu'on pourrait attendre d'un flux OAuth2 client_credentials
         // "standard". Mélanger les deux (comme avant) provoque un 400 côté MTN.
+        // Le scope SEND-SMS est documenté dans l'onglet Authorizations du
+        // produit SMS v3 API — généralement attribué automatiquement selon
+        // les produits souscrits par l'app, mais on le passe explicitement
+        // en renfort (sans risque si MTN l'ignore).
         $response = Http::asForm()->post($this->tokenUrl . '?grant_type=client_credentials', [
             'client_id' => $this->clientId,
             'client_secret' => $this->clientSecret,
+            'scope' => 'SEND-SMS',
         ]);
 
         if (!$response->ok() || !$response->json('access_token')) {
