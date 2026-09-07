@@ -105,16 +105,25 @@ class MtnSmsService
     /**
      * Construit le corps de requête attendu par
      * POST /v3/sms/messages/sms/outbound (voir swagger officiel :
-     * receiverAddress, message, serviceCode, clientCorrelatorId sont requis ;
-     * senderAddress est optionnel mais prend le pas sur serviceCode pour
-     * l'affichage de l'expéditeur si les deux sont fournis).
+     * receiverAddress, message, serviceCode, clientCorrelatorId sont requis).
+     *
+     * serviceCode (le short code) est obligatoire pour l'API MTN. Tant que la
+     * plateforme n'a pas de short code approuvé (MTN_SMS_SERVICE_CODE vide en
+     * .env), on utilise le senderAddress de l'organisation à sa place dans ce
+     * champ — c'est le repli documenté par MTN elle-même : "if a senderAddress
+     * is used rather than the serviceCode, then the senderAddress value must
+     * be passed as well to this field, this will ensure that the messages are
+     * sent successfully." senderAddress est en plus envoyé séparément quand
+     * il existe, pour contrôler le nom affiché à l'expéditeur.
      */
     public function buildOutboundPayload(string $recipient, string $message, ?string $clientCorrelatorId = null): array
     {
+        $serviceCode = filled($this->serviceCode) ? $this->serviceCode : $this->senderAddress;
+
         $payload = [
             'receiverAddress' => [$this->normalizePhoneNumber($recipient)],
             'message' => $message,
-            'serviceCode' => $this->serviceCode,
+            'serviceCode' => $serviceCode,
             'clientCorrelatorId' => $clientCorrelatorId ?? (string) Str::uuid(),
             'requestDeliveryReceipt' => false,
         ];
