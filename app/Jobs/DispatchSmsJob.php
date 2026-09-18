@@ -161,12 +161,35 @@ class DispatchSmsJob implements ShouldQueue
             default => 'Échec du dispatch : ' . $exception->getMessage(),
         };
 
-        $this->sms->updateStatus('failed', $reason);
+        $this->sms->updateStatus(
+            'failed',
+            $reason,
+            $reason
+        );
 
         // On ne facture pas au client un SMS qui n'a jamais pu être envoyé
         // (ni via un téléphone, ni via MTN) : on recrédite son quota mensuel.
         if ($subscription && $subscription->sms_used > 0) {
             $subscription->decrement('sms_used');
         }
+    }
+
+    private function formatDispatchError(\Throwable $e): string
+    {
+        $message = $e->getMessage();
+
+        return mb_substr($message, 0, 2000);
+    }
+
+    private function rememberDispatchError(string $reason): void
+    {
+        $this->sms->update([
+            'error_message' => $reason,
+        ]);
+
+        $this->sms->statusLogs()->create([
+            'status' => $this->sms->status,
+            'details' => $reason,
+        ]);
     }
 }
