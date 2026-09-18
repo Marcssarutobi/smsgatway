@@ -170,7 +170,7 @@ class SmsMessageController extends Controller
             // Les deux doivent être actifs pour que l'envoi réseau fonctionne.
             return (bool) config('services.mtn.enabled')
                 && \App\Models\SmsPricingSetting::current()->network_enabled
-                && filled(config('services.mtn.service_code'));
+                && \App\Services\MtnSmsService::forOrganisation($subscription->user->organisation)->hasSenderIdentity();
         }
 
         return $this->hasAvailableDevice($subscription->user);

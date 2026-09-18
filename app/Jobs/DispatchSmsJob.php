@@ -78,7 +78,9 @@ class DispatchSmsJob implements ShouldQueue
     // indisponible plutôt que d'échouer immédiatement.
     private function sendViaMtn(): void
     {
-        if (!config('services.mtn.enabled') || !filled(config('services.mtn.service_code'))) {
+        $mtn = \App\Services\MtnSmsService::forOrganisation($this->sms->user->organisation);
+
+        if (!config('services.mtn.enabled') || !$mtn->hasSenderIdentity()) {
             // MTN pas (ou plus) configuré côté plateforme, alors qu'un client
             // a un abonnement Réseau actif : on retente plutôt que d'échouer
             // tout de suite, le temps qu'un admin corrige la config.
@@ -92,7 +94,7 @@ class DispatchSmsJob implements ShouldQueue
         }
 
         try {
-            $result = \App\Services\MtnSmsService::forOrganisation($this->sms->user->organisation)->send(
+            $result = $mtn->send(
                 recipient: $this->sms->recipient,
                 message: $this->sms->content,
                 clientCorrelatorId: (string) $this->sms->id,

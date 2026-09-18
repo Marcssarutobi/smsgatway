@@ -67,6 +67,11 @@ class MtnSmsService
         );
     }
 
+    public function hasSenderIdentity(): bool
+    {
+        return filled($this->serviceCode) || filled($this->senderAddress);
+    }
+
     /**
      * Normalise un numéro de téléphone saisi par le client (formats variés :
      * "0197xxxxxx", "+229 97 xx xx xx", "22997xxxxxx", "00229 97xxxxxx",
@@ -118,6 +123,10 @@ class MtnSmsService
      */
     public function buildOutboundPayload(string $recipient, string $message, ?string $clientCorrelatorId = null): array
     {
+        if (!$this->hasSenderIdentity()) {
+            throw new InvalidArgumentException('Aucun serviceCode ou senderAddress MTN configure.');
+        }
+
         $serviceCode = filled($this->serviceCode) ? $this->serviceCode : $this->senderAddress;
 
         $payload = [
