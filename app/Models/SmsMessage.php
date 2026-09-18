@@ -37,9 +37,15 @@ class SmsMessage extends Model
     }
 
     // change le statut ET enregistre l'historique en une seule méthode
-    public function updateStatus(string $status, ?string $details = null): void
+    public function updateStatus(string $status, ?string $details = null, ?string $errorMessage = null): void
     {
-        $this->update(['status' => $status]);
+        $updates = ['status' => $status];
+
+        if ($errorMessage !== null) {
+            $updates['error_message'] = $errorMessage;
+        }
+
+        $this->update($updates);
         $this->statusLogs()->create(['status' => $status, 'details' => $details]);
     }
 }

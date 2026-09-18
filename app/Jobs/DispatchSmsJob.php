@@ -9,6 +9,7 @@ use App\Models\SmsMessage;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
 
 class DispatchSmsJob implements ShouldQueue
 {
@@ -52,6 +53,7 @@ class DispatchSmsJob implements ShouldQueue
                 'device_sim_id' => $deviceSim->id,
                 'channel' => 'device',
                 'status' => 'queued',
+                'error_message' => null,
             ]);
 
             $this->sms->statusLogs()->create([
@@ -81,6 +83,8 @@ class DispatchSmsJob implements ShouldQueue
         $mtn = \App\Services\MtnSmsService::forOrganisation($this->sms->user->organisation);
 
         if (!config('services.mtn.enabled') || !$mtn->hasSenderIdentity()) {
+            $reason = "Configuration MTN incomplete: MTN_SMS_ENABLED est inactif ou aucun serviceCode/senderAddress n'est configure.";
+
             // MTN pas (ou plus) configuré côté plateforme, alors qu'un client
             // a un abonnement Réseau actif : on retente plutôt que d'échouer
             // tout de suite, le temps qu'un admin corrige la config.
@@ -88,6 +92,7 @@ class DispatchSmsJob implements ShouldQueue
                 'sms_id' => $this->sms->id,
             ]);
 
+            $this->rememberDispatchError($reason);
             $delay = $this->backoff[$this->attempts() - 1] ?? end($this->backoff);
             $this->release($delay);
             return;
@@ -104,6 +109,7 @@ class DispatchSmsJob implements ShouldQueue
                 'channel' => 'mtn',
                 'status' => 'sent',
                 'sent_at' => now(),
+                'error_message' => null,
             ]);
 
             $this->sms->statusLogs()->create([
@@ -111,11 +117,14 @@ class DispatchSmsJob implements ShouldQueue
                 'details' => "Envoyé via l'API MTN (transactionId: " . ($result['transactionId'] ?? 'inconnu') . ')',
             ]);
         } catch (\Throwable $e) {
+            $reason = $this->formatDispatchError($e);
+
             \Illuminate\Support\Facades\Log::warning('Échec envoi SMS via MTN', [
                 'sms_id' => $this->sms->id,
-                'error' => $e->getMessage(),
+                'error' => $reason,
             ]);
 
+            $this->rememberDispatchError($reason);
             $delay = $this->backoff[$this->attempts() - 1] ?? end($this->backoff);
             $this->release($delay);
         }

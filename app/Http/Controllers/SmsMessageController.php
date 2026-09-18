@@ -40,20 +40,26 @@ class SmsMessageController extends Controller
             ], 503);
         }
 
+        $channel = $this->messageChannelFor($subscription);
+
         $sms = SmsMessage::create([
             'user_id' => $user->id,
             'api_key_id' => $apiKey->id,
+            'channel' => $channel,
             'recipient' => $request->to,
             'content' => $this->buildContent($user, $apiKey, $request->message),
             'status' => 'pending',
         ]);
 
-        $sms->statusLogs()->create(['status' => 'pending']);
+        $sms->statusLogs()->create([
+            'status' => 'pending',
+            'details' => $this->pendingDetailsFor($channel),
+        ]);
         $subscription->increment('sms_used');
 
         dispatch(new DispatchSmsJob($sms));
 
-        return response()->json(['id' => $sms->id, 'status' => $sms->status], 201);
+        return response()->json(['id' => $sms->id, 'status' => $sms->status, 'channel' => $sms->channel], 201);
     }
 
     // Envoi du même message à plusieurs destinataires en une seule requête.
@@ -93,20 +99,25 @@ class SmsMessageController extends Controller
         }
 
         $content = $this->buildContent($user, $apiKey, $request->message);
+        $channel = $this->messageChannelFor($subscription);
 
-        $created = collect($recipients)->map(function (string $to) use ($user, $apiKey, $content) {
+        $created = collect($recipients)->map(function (string $to) use ($user, $apiKey, $content, $channel) {
             $sms = SmsMessage::create([
                 'user_id' => $user->id,
                 'api_key_id' => $apiKey->id,
+                'channel' => $channel,
                 'recipient' => $to,
                 'content' => $content,
                 'status' => 'pending',
             ]);
 
-            $sms->statusLogs()->create(['status' => 'pending']);
+            $sms->statusLogs()->create([
+                'status' => 'pending',
+                'details' => $this->pendingDetailsFor($channel),
+            ]);
             dispatch(new DispatchSmsJob($sms));
 
-            return ['id' => $sms->id, 'to' => $to, 'status' => $sms->status];
+            return ['id' => $sms->id, 'to' => $to, 'status' => $sms->status, 'channel' => $sms->channel];
         });
 
         $subscription->increment('sms_used', $count);
@@ -188,6 +199,18 @@ class SmsMessageController extends Controller
             ->where('is_active', true)
             ->whereColumn('sent_today', '<', 'daily_quota')
             ->exists();
+    }
+
+    private function messageChannelFor(\App\Models\Subscription $subscription): string
+    {
+        return $subscription->channel === 'network' ? 'mtn' : 'device';
+    }
+
+    private function pendingDetailsFor(string $channel): string
+    {
+        return $channel === 'mtn'
+            ? "En attente de traitement par le worker d'envoi MTN."
+            : "En attente d'assignation a un appareil Android disponible.";
     }
 
     // Ajoute une signature en bas du message :

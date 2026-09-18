@@ -85,13 +85,20 @@ class NetworkSmsSendTest extends TestCase
                 'message' => 'Bonjour',
             ]);
 
-        $response->assertCreated();
+        $response
+            ->assertCreated()
+            ->assertJson([
+                'status' => 'pending',
+                'channel' => 'mtn',
+            ]);
+
         Bus::assertDispatched(DispatchSmsJob::class);
 
         $this->assertDatabaseHas('sms_messages', [
             'user_id' => $user->id,
             'recipient' => '0197000000',
             'status' => 'pending',
+            'channel' => 'mtn',
         ]);
     }
 }
